@@ -1,0 +1,56 @@
+# nj-notebook.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nj-notebook # change to your preferred name
+  namespace: aiea-slugbotics # <-- set your namespace
+  labels: { app: nj-notebook } # change to your preferred label
+spec:
+  restartPolicy: Always
+
+  # run Jupyter as jovyan (uid 1000) and grant group access to the volume
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 100
+    fsGroup: 100
+    fsGroupChangePolicy: "OnRootMismatch"
+
+  initContainers:
+    - name: fix-perms
+      image: alpine:3.20
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      command: ["/bin/sh","-lc"]
+      args:
+        - |
+          chown -R 1000:100 /data || true
+          chmod -R g+rwXs /data || true
+          ls -ld /data
+      volumeMounts:
+        - name: e2e
+          mountPath: /data
+
+  containers:
+    - name: lab
+      image: jupyter/tensorflow-notebook:latest   # change to jupyter/tensorflow-notebook:latest if you prefer
+      imagePullPolicy: IfNotPresent
+      ports: [{ containerPort: 8888 }]
+      env:
+        - name: JUPYTER_TOKEN               # use this to log in
+          value: aiea123
+      args:
+        - start-notebook.sh
+        - --NotebookApp.ip=0.0.0.0
+        - --NotebookApp.port=8888
+      resources:
+        requests: { cpu: "1", memory: "2Gi" }
+        limits:   { cpu: "4", memory: "8Gi" }
+      volumeMounts:
+        - name: e2e
+          mountPath: /data                  # your dataset lives here
+
+  volumes:
+    - name: e2e
+      persistentVolumeClaim:
+        claimName: waymo-e2e-dataset           # <-- your existing PVC
