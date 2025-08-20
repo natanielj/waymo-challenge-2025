@@ -44,11 +44,14 @@ spec:
         - --NotebookApp.ip=0.0.0.0
         - --NotebookApp.port=8888
       resources:
-        requests: { cpu: "1", memory: "2Gi" }
-        limits:   { cpu: "4", memory: "8Gi" }
+        requests: { cpu: "1", memory: "2Gi", nvidia.com/gpu: "1" }
+        limits:   { cpu: "4", memory: "8Gi", nvidia.com/gpu: "1" } # if you need GPU support
       volumeMounts:
         - name: e2e
-          mountPath: /data                  # your dataset lives here
+          mountPath: /data
+        - name: e2e
+          mountPath: /home/jovyan/work
+          subPath: work           # your dataset lives here
 
   volumes:
     - name: e2e
