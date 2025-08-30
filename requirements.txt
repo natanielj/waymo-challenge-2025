@@ -1,0 +1,28 @@
+# Waymo + TF core (GPU-enabled TF pip wheel)
+tensorflow==2.13.0
+waymo-open-dataset-tf-2-12-0==1.6.7
+
+# Waymo-required pins
+numpy==1.23.5
+absl-py==1.4.0
+google-auth==2.16.2
+protobuf==4.23.4
+matplotlib==3.6.1
+dask[dataframe]==2023.3.1
+distributed==2023.3.1
+setuptools==67.6.0
+
+# Extras (compatible with mpl 3.6.1 + NumPy 1.23.5)
+seaborn==0.11.2
+opencv-python-headless==4.7.0.72
+typing-extensions>=4.10,<5
+
+# Jupyter kernel support
+ipykernel>=6.27,<7
+
+# (Optional but nice)
+wheel
+tensorboard==2.13.0
+tensorflow-estimator==2.13.0
+tensorflow-probability==0.21.0
+keras==2.13.1
