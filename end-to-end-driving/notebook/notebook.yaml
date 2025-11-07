@@ -33,7 +33,7 @@ spec:
 
   containers:
     - name: lab
-      image: jupyter/tensorflow-notebook:latest   # change to jupyter/tensorflow-notebook:latest if you prefer
+      image: jupyter/minimal-notebook:latest   # change to jupyter/tensorflow-notebook:latest if you prefer
       imagePullPolicy: IfNotPresent
       ports: [{ containerPort: 8888 }]
       env:
@@ -44,8 +44,8 @@ spec:
         - --NotebookApp.ip=0.0.0.0
         - --NotebookApp.port=8888
       resources:
-        requests: { cpu: "1", memory: "2Gi", nvidia.com/gpu: "1" }
-        limits:   { cpu: "4", memory: "8Gi", nvidia.com/gpu: "1" } # if you need GPU support
+        requests: { cpu: "2", memory: "4Gi"} # if you need GPU support : , nvidia.com/gpu: "1" 
+        limits:   { cpu: "4", memory: "16Gi"} # if you need GPU support : , nvidia.com/gpu: "1" 
       volumeMounts:
         - name: e2e
           mountPath: /data

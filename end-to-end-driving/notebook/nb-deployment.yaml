@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nj-notebook
+  namespace: aiea-slugbotics
+  labels:
+    app: nj-notebook
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nj-notebook
+
+  template:
+    metadata:
+      labels:
+        app: nj-notebook
+
+    spec:
+      restartPolicy: Always
+
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+        fsGroupChangePolicy: "OnRootMismatch"
+
+      initContainers:
+        - name: fix-perms
+          image: alpine:3.20
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              chown -R 1000:100 /data || true
+              chmod -R g+rwXs /data || true
+              ls -ld /data
+          volumeMounts:
+            - name: e2e
+              mountPath: /data
+
+      containers:
+        - name: lab
+          image: jupyter/minimal-notebook:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          env:
+            - name: JUPYTER_TOKEN
+              value: aiea123
+          args:
+            - start-notebook.sh
+            - --NotebookApp.ip=0.0.0.0
+            - --NotebookApp.port=8888
+            - --NotebookApp.shutdown_no_activity_timeout=0  
+            - --MappingKernelManager.cull_idle_timeout=0    
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+              nvidia.com/gpu: "1"
+
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+
+
+          volumeMounts:
+            - name: e2e
+              mountPath: /data
+            - name: e2e
+              mountPath: /home/jovyan/work
+              subPath: work
+
+      volumes:
+        - name: e2e
+          persistentVolumeClaim:
+            claimName: waymo-e2e-dataset

@@ -8,4 +8,4 @@ spec:
   accessModes: [ReadWriteMany]
   resources:
     requests:
-      storage: 1.5Ti                         # start with 1.5 TB; you can expand
+      storage: 2Ti                         # start with 1.5 TB; you can expand
