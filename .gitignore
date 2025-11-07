@@ -1,1 +1,8 @@
 .venv
+
+.waymo-venv
+
+.ipynb_checkpoints
+
+
+end-to-end-driving/.ipynb_checkpoints
