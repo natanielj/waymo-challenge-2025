@@ -1,0 +1,11 @@
+# waymo-datasets-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: waymo-e2e-dataset
+spec:
+  storageClassName: rook-cephfs           # RWX, shared filesystem
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 1.5Ti                         # start with 1.5 TB; you can expand

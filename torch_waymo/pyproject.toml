@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "torch_waymo"
+version = "0.1.5"
+authors = [
+    { name = "William Guimont-Martin", email = "william.guimont-martin@norlab.ulaval.ca" },
+]
+description = "Load Waymo Open Dataset in PyTorch"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = ["tqdm", "torch", "numpy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+[project.optional-dependencies]
+waymo = ["waymo-open-dataset-tf-2-11-0", "protobuf", "tensorflow[and-cuda]", "numpy<2"]
+[project.urls]
+"Homepage" = "https://github.com/willGuimont/torch_waymo"
+"Bug Tracker" = "https://github.com/willGuimont/torch_waymo/issues"
+[project.scripts]
+torch-waymo-convert = "torch_waymo.convert_waymo:main"
+[tool.black]
+line-length = 120
+[tool.isort]
+profile = "black"
