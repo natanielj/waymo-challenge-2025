@@ -66,3 +66,6 @@ env.local
 credentials.json
 token.json
 service_account.json
+
+torch_waymo/
+end-to-end-driving/waymo-open-dataset
