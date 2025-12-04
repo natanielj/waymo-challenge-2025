@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tf-gpu-shell
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tf-gpu-shell
+  template:
+    metadata:
+      labels:
+        app: tf-gpu-shell
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: tf-gpu
+        image: tensorflow/tensorflow:2.11.0-gpu
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "TensorFlow GPU shell ready."
+            sleep infinity
+
+        resources:
+          limits:
+            cpu: "8"
+            memory: "32Gi"
+            nvidia.com/gpu: 1
+          requests:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: 1
+
+        volumeMounts:
+        - name: dataset
+          mountPath: /data
+        - name: pytorch-dataset
+          mountPath: /data/pytorch-waymo
+
+      volumes:
+      - name: dataset
+        persistentVolumeClaim:
+          claimName: waymo-e2e-dataset
+
+      - name: pytorch-dataset
+        persistentVolumeClaim:
+          claimName: waymo-e2e-dataset-conv
+
