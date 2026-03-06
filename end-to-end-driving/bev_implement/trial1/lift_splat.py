@@ -11,7 +11,8 @@ class MultiCamLiftSplatBEV(nn.Module):
         depth_max=50.0,
         bev_x_range=(0, 50),
         bev_y_range=(-25, 25),
-        bev_res=0.5
+        bev_res=0.5,
+        use_learned_head=False,
     ):
         super().__init__()
 
@@ -22,6 +23,7 @@ class MultiCamLiftSplatBEV(nn.Module):
         self.x_min, self.x_max = bev_x_range
         self.y_min, self.y_max = bev_y_range
         self.res = bev_res
+        self.use_learned_head = use_learned_head
 
         self.bev_h = int((self.x_max - self.x_min) / self.res)
         self.bev_w = int((self.y_max - self.y_min) / self.res)
@@ -83,6 +85,15 @@ class MultiCamLiftSplatBEV(nn.Module):
 
         _, C_feat, Hf, Wf = features.shape
 
+        # Intrinsics are for image resolution; project rays on feature-grid pixels.
+        scale_x = W / float(Wf)
+        scale_y = H / float(Hf)
+        K_feat = K.clone()
+        K_feat[..., 0, 0] = K_feat[..., 0, 0] / scale_x
+        K_feat[..., 1, 1] = K_feat[..., 1, 1] / scale_y
+        K_feat[..., 0, 2] = K_feat[..., 0, 2] / scale_x
+        K_feat[..., 1, 2] = K_feat[..., 1, 2] / scale_y
+
         depth_logits = self.depth_head(features)
         depth_prob = torch.softmax(depth_logits, dim=1)
 
@@ -104,7 +115,7 @@ class MultiCamLiftSplatBEV(nn.Module):
         grid = grid.view(-1, 3).T                       # (3, Hf*Wf)
 
         # Inverse intrinsics
-        K_inv = torch.inverse(K)   # (B,N,3,3)
+        K_inv = torch.inverse(K_feat)   # (B,N,3,3)
 
         # Expand grid for batch + cameras
         grid = grid.unsqueeze(0).unsqueeze(0)           # (1,1,3,Hf*Wf)
@@ -113,24 +124,15 @@ class MultiCamLiftSplatBEV(nn.Module):
         # Compute camera rays
         rays = torch.matmul(K_inv, grid)                # (B,N,3,Hf*Wf)
 
-        # Depth bins
-
-        depth_values = torch.linspace(
-            self.depth_min,
-            self.depth_max,
-            self.depth_bins,
-            device=device
-        )
-
         # Expand for broadcasting
-        depth_values = depth_values.view(1,1,self.depth_bins,1,1)
+        depth_values = depth_values.view(1, 1, self.depth_bins, 1, 1, 1)
 
         # reshape rays to spatial
         rays = rays.view(B, N, 3, Hf, Wf)
         rays = rays.unsqueeze(2)   # (B,N,1,3,Hf,Wf)
 
         # Multiply by depth bins
-        points_cam = rays * depth_values.unsqueeze(3)
+        points_cam = rays * depth_values
         # (B,N,D,3,Hf,Wf)
 
         
@@ -170,19 +172,30 @@ class MultiCamLiftSplatBEV(nn.Module):
         # Expand features to match depth dimension
         feat = features.unsqueeze(2).expand(-1, -1, self.depth_bins, -1, -1, -1)
         feat = feat.permute(0,1,2,4,5,3)   # (B,N,D,Hf,Wf,C)
+        depth_w = depth_prob.permute(0, 1, 2, 3, 4).unsqueeze(-1)  # (B,N,D,Hf,Wf,1)
+        feat = feat * depth_w
 
         # Flatten everything consistently
         x_idx = x_idx.reshape(B, -1)
         y_idx = y_idx.reshape(B, -1)
         valid = valid.reshape(B, -1)
+        weights = depth_prob.reshape(B, -1)
+        range_xy = torch.sqrt(x * x + y * y).reshape(B, -1)
         feat = feat.reshape(B, -1, feat.shape[-1])  # (B, total_points, C)
 
         bev = torch.zeros(B, feat.shape[-1], self.bev_h, self.bev_w, device=device)
+        bev_weight = torch.zeros(B, self.bev_h, self.bev_w, device=device)
 
         for b in range(B):
             xb = x_idx[b][valid[b]]
             yb = y_idx[b][valid[b]]
             fb = feat[b][valid[b]]
+            wb = weights[b][valid[b]]
+            rb = range_xy[b][valid[b]]
+
+            # Balance perspective density drop-off: farther cells get a higher gain.
+            range_gain = (rb / max(self.x_max, 1e-6)).clamp_min(0.05)
+            wb_balanced = wb * range_gain
 
             bev[b].index_put_(
                 (torch.arange(fb.shape[1], device=device).unsqueeze(1).expand(-1, fb.shape[0]),
@@ -191,7 +204,13 @@ class MultiCamLiftSplatBEV(nn.Module):
                 fb.T,
                 accumulate=True
             )
+            bev_weight[b].index_put_((xb, yb), wb_balanced, accumulate=True)
 
-        bev_out = self.bev_head(bev)
+        bev = bev / bev_weight.unsqueeze(1).clamp_min(1e-6)
 
-        return bev_out
+        if self.use_learned_head:
+            return self.bev_head(bev)
+
+        # Deterministic occupancy-like map for untrained inference.
+        density = torch.log1p(bev_weight).unsqueeze(1)
+        return density

@@ -70,7 +70,7 @@ service_account.json
 torch_waymo/
 end-to-end-driving/waymo-open-dataset
 work/end-to-end-driving/bev_implement/vision_env
-work/end-to-end-driving/bev_implement/vision_env
 work/Untitled.ipynb
 work/end-to-end-driving/bev_implement/BEVFormer
 work/end-to-end-driving/bev_implement/__pycache__
+end-to-end-driving/bev_implement/vision_env
