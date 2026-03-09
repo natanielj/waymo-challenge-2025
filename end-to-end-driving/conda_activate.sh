@@ -1,1 +1,2 @@
-source /data/conda/bin/activate
+source /workdir/crash-team/conda/bin/activate
+
